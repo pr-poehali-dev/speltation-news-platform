@@ -98,6 +98,9 @@ const Index = () => {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [bioText, setBioText] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('speltation_user');
@@ -392,6 +395,49 @@ const Index = () => {
       }
     } catch (error) {
       toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Файл слишком большой', description: 'Максимум 5 МБ', variant: 'destructive' });
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Неверный формат', description: 'Загрузите изображение', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      await handleUpdateSettings({ avatar_url: base64 });
+      setUploadingAvatar(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!currentUser) return;
+    
+    const updates: Partial<User> = {};
+    
+    if (avatarUrl && avatarUrl !== currentUser.avatar_url) {
+      updates.avatar_url = avatarUrl;
+    }
+    
+    if (bioText !== currentUser.bio) {
+      updates.bio = bioText;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await handleUpdateSettings(updates);
     }
   };
 
@@ -832,26 +878,87 @@ const Index = () => {
         )}
       </main>
 
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="bg-card border-border">
+      <Dialog open={showSettings} onOpenChange={(open) => {
+        setShowSettings(open);
+        if (open && currentUser) {
+          setAvatarUrl(currentUser.avatar_url || '');
+          setBioText(currentUser.bio || '');
+        }
+      }}>
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
-            <DialogTitle>Настройки</DialogTitle>
+            <DialogTitle>Настройки профиля</DialogTitle>
           </DialogHeader>
           {currentUser && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Тёмная тема</Label>
-                <Switch
-                  checked={currentUser.dark_theme}
-                  onCheckedChange={(checked) => handleUpdateSettings({ dark_theme: checked })}
-                />
+            <div className="space-y-6">
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="w-32 h-32 border-4 border-primary/30">
+                  <AvatarImage src={currentUser.avatar_url || '/placeholder.svg'} />
+                  <AvatarFallback className="text-4xl">{currentUser.username[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                
+                <div className="flex flex-col gap-2 w-full">
+                  <Label htmlFor="avatar-upload" className="cursor-pointer">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-primary/50"
+                      disabled={uploadingAvatar}
+                      asChild
+                    >
+                      <span>
+                        <Icon name={uploadingAvatar ? 'Loader2' : 'Upload'} size={18} className={`mr-2 ${uploadingAvatar ? 'animate-spin' : ''}`} />
+                        {uploadingAvatar ? 'Загрузка...' : 'Загрузить аватар'}
+                      </span>
+                    </Button>
+                  </Label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">PNG, JPG, GIF до 5 МБ</p>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label>Звуковое сопровождение</Label>
-                <Switch
-                  checked={currentUser.sound_enabled}
-                  onCheckedChange={(checked) => handleUpdateSettings({ sound_enabled: checked })}
+
+              <div>
+                <Label>Биография</Label>
+                <Textarea
+                  value={bioText}
+                  onChange={(e) => setBioText(e.target.value)}
+                  placeholder="Расскажите о себе..."
+                  className="bg-secondary/50 resize-none"
+                  rows={3}
+                  maxLength={200}
                 />
+                <p className="text-xs text-muted-foreground mt-1">{bioText.length}/200</p>
+              </div>
+
+              <Button
+                onClick={handleUpdateProfile}
+                className="w-full gradient-purple"
+                disabled={bioText === (currentUser.bio || '')}
+              >
+                Сохранить изменения
+              </Button>
+
+              <div className="border-t border-border pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Тёмная тема</Label>
+                  <Switch
+                    checked={currentUser.dark_theme}
+                    onCheckedChange={(checked) => handleUpdateSettings({ dark_theme: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Звуковое сопровождение</Label>
+                  <Switch
+                    checked={currentUser.sound_enabled}
+                    onCheckedChange={(checked) => handleUpdateSettings({ sound_enabled: checked })}
+                  />
+                </div>
               </div>
             </div>
           )}
