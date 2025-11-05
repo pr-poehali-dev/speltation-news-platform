@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "name": "Get all articles",
+      "method": "GET",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "articles": []
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create article",
+      "method": "POST",
+      "body": {
+        "action": "create",
+        "title": "Test Article",
+        "content": "Test content",
+        "category": "Технологии",
+        "author_id": 1
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "article": {
+          "title": "string"
+        }
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Get all users",
+      "method": "GET",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "users": []
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
